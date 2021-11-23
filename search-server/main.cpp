@@ -102,8 +102,8 @@ public:
         return matched_documents;
     }
 
-    vector<Document> FindTopDocuments(const string& raw_query) const {
-        return FindTopDocuments(raw_query, [](int document_id, DocumentStatus status, int rating) { return status==DocumentStatus::ACTUAL; });
+    vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus desired_status=DocumentStatus::ACTUAL) const {
+        return FindTopDocuments(raw_query, [desired_status](int document_id, DocumentStatus status, int rating) { return status==desired_status; });
     }
 
     int GetDocumentCount() const {
@@ -218,9 +218,9 @@ private:
             }
             const double inverse_document_freq = ComputeWordInverseDocumentFreq(word);
             for (const auto [document_id, term_freq] : word_to_document_freqs_.at(word)) {
-                
-                    if (predicate(document_id, documents_.at(document_id).status, documents_.at(document_id).rating)) {
-                                    //Я не понял как подругому вызвать параметры. Подскажите,пожалуйста.
+                pair <DocumentStatus, int > stat_rait(documents_.at(document_id).status, documents_.at(document_id).rating);
+                //Сделал так. Но все равно получается, что обращаюсь два раза. А вот как, получая конретную структуру "DocumentData" по ID, вернуть оба элемента структуры не понимаю.
+                    if (predicate(document_id, stat_rait.first, stat_rait.second)) {
                         document_to_relevance[document_id] += term_freq * inverse_document_freq;
                     }
             }
@@ -272,6 +272,11 @@ int main() {
 
     cout << "ACTUAL:"s << endl;
     for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::ACTUAL; })) {
+        PrintDocument(document);
+    }
+
+    cout << "BANNED:"s << endl;
+    for (const Document& document : search_server.FindTopDocuments("пушистый ухоженный кот"s, DocumentStatus::BANNED)) {
         PrintDocument(document);
     }
 
