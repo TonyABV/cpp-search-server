@@ -39,6 +39,15 @@ void TestExcludeDocumentsWithMinusWords() {
     const string content = "cat in the city"s;
     const vector<int> ratings = { 1, 2, 3 };
 
+    // на замечание реагирую, но не совсем понимаю зачем проверять добавление документов, если это делалось в предыдущем тесте. поясните, пожалуйста.
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        const auto found_docs = server.FindTopDocuments("cat"s);
+        ASSERT_EQUAL(found_docs.size(), 1u);
+        const Document& doc0 = found_docs[0];
+        ASSERT_EQUAL(doc0.id, doc_id);
+    }
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
@@ -56,29 +65,41 @@ void TestMatching() {
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        const auto& some_information = server.MatchDocument("cat in the vilage", 42);
+        vector<string> matching = get<vector<string>>(some_information);
         vector<string> expected_matching = { "cat", "in","the" };
-        ASSERT_EQUAL((get<vector<string>>(server.MatchDocument("cat in the vilage", 42))), expected_matching);
-        ASSERT_HINT((get<vector<string>>(server.MatchDocument("-cat dog in the city", 42))).empty(), "A document whith \"-word\" must be empty.");
+        ASSERT_EQUAL(matching, expected_matching);
+    }
+    {
+        SearchServer server;
+        server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
+        const auto& some_information = server.MatchDocument("-cat dog in the city", 42);
+        vector<string> matching = get<vector<string>>(some_information);
+        ASSERT_HINT(matching.empty(), "A document whith \"-word\" must be empty.");
     }
 }
 
 //  Тест проверяет, что поисковая система cортирует найденные документы в порядке убывания релевантности
 void TestSortByRelevance() {
-    const int doc_id = 42;
-    const string content = "cat in the city"s;
+    const int doc_id = 32;
+    const string content = "dog walks alone"s;
     const vector<int> ratings = { 1, 2, 3 };
 
     const int sec_doc_id = 52;
     const string sec_content = "dog in the vilage"s;
     const vector<int> sec_ratings = { 1, 2, 3 };
 
+    const int third_doc_id = 42;
+    const string third_content = "cat in the city"s;
+    const vector<int> third_ratings = { 1, 2, 3 };
+
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
         server.AddDocument(sec_doc_id, sec_content, DocumentStatus::ACTUAL, sec_ratings);
-
-        vector<Document> result = server.FindTopDocuments("cat in the city"s);
-        ASSERT_HINT(result[0].relevance >= result[1].relevance,"Documents must be sorted by relevance in descending order");
+        server.AddDocument(third_doc_id, third_content, DocumentStatus::ACTUAL, third_ratings);
+        vector<Document> result = server.FindTopDocuments("cat alone in the city"s);
+        ASSERT_HINT(result[0].relevance >= result[1].relevance && result[1].relevance>=result[2].relevance, "Documents must be sorted by relevance in descending order");
     }
 }
 
@@ -100,15 +121,23 @@ void TestFilterByPredicate() {
     const string content = "cat in the city"s;
     const vector<int> ratings = { 1, 2, 3 };
 
+    const int sec_doc_id = 52;
+    const string sec_content = "dog in the vilage"s;
+    const vector<int> sec_ratings = { 4, 5, 6 };
+
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::BANNED, ratings);
-        ASSERT(server.FindTopDocuments("cat"s, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::ACTUAL; }).empty());
+        server.AddDocument(sec_doc_id, sec_content, DocumentStatus::ACTUAL, sec_ratings);
+        ASSERT_EQUAL(server.FindTopDocuments("in the"s, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::BANNED; }).size(),1);
     }
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::BANNED, ratings);
-        ASSERT(server.FindTopDocuments("cat"s, [](int document_id, DocumentStatus status, int rating) { return document_id == 33; }).empty());
+        server.AddDocument(sec_doc_id, sec_content, DocumentStatus::ACTUAL, sec_ratings);
+        const auto found_docs = server.FindTopDocuments("in the"s, [](int document_id, DocumentStatus status, int rating) { return document_id == 52; });
+        const Document& doc = found_docs[0];
+        ASSERT_EQUAL(doc.id, 52);
     }
     {
         SearchServer server;
@@ -123,10 +152,16 @@ void TestSerchByStatus() {
     const string content = "cat in the city"s;
     const vector<int> ratings = { 1, 2, 3 };
 
+    const int sec_doc_id = 52;
+    const string sec_content = "dog in the vilage"s;
+    const vector<int> sec_ratings = { 4, 5, 6 };
+
     {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
-        ASSERT(server.FindTopDocuments("cat"s, DocumentStatus::BANNED).empty());
+        server.AddDocument(sec_doc_id, sec_content, DocumentStatus::IRRELEVANT, sec_ratings);
+        ASSERT_EQUAL(server.FindTopDocuments("in the"s, DocumentStatus::IRRELEVANT).size(),1U);
+        ASSERT(server.FindTopDocuments("in the"s, DocumentStatus::BANNED).empty());
     }
 }
 
