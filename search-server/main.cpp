@@ -112,7 +112,7 @@ class SearchServer {
             if (!IsValidWord(word)) {
                 throw invalid_argument("There are invalid characters in the document.");
             }
-            else {
+            if (!IsStopWord(word)) {
                 words.push_back(word);
             }
         }
