@@ -109,25 +109,20 @@ class SearchServer {
     vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
-            try {
-                IsValidWord(word);
+            if (!IsValidWord(word)) {
+                throw invalid_argument("There are invalid characters in the document.");
             }
-            catch (const invalid_argument& e) {
-                throw invalid_argument(e);
-            }
-            if (!IsStopWord(word)) {
+            else {
                 words.push_back(word);
             }
         }
         return words;
     }
 
-    void IsValidWord(const string& word) const {
-        if (!none_of(word.begin(), word.end(), [](char c) {
+    bool IsValidWord(const string& word) const {
+        return none_of(word.begin(), word.end(), [](char c) {
             return c >= '\0' && c < ' ';
-            })) {
-            throw invalid_argument("There are invalid characters ");
-        }
+            });
     }
 
     struct QueryWord {
@@ -137,12 +132,6 @@ class SearchServer {
     };
 
     QueryWord ParseQueryWord(string text) const {
-        try {
-            IsValidWord(text);
-        }
-        catch (const invalid_argument& e) {
-            throw invalid_argument(e.what() + "among query words."s);
-        }
         if (text.empty()) {
             throw invalid_argument("Query is empty."s);
         }
@@ -154,7 +143,10 @@ class SearchServer {
         if (text[0] == '-' || text.empty()) {
             throw invalid_argument("The query has \"--\" or void after \"-\"."s);
         }
-        return QueryWord{ text, is_minus, IsStopWord(text) };
+        if (!IsValidWord(text)) {
+            throw invalid_argument("The query has invalid characters.");
+        }
+        return { text, is_minus, IsStopWord(text) };
     }
 
     struct Query {
@@ -165,21 +157,16 @@ class SearchServer {
     Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWords(text)) {
-            try {
-                const QueryWord query_word = ParseQueryWord(word);
-            
-            if (!query_word.is_stop) {
-                if (query_word.is_minus) {
-                    query.minus_words.insert(query_word.data);
+
+                const QueryWord query_word = ParseQueryWord(word);\
+                if (!query_word.is_stop) {
+                    if (query_word.is_minus) {
+                        query.minus_words.insert(query_word.data);
+                    }
+                    else {
+                        query.plus_words.insert(query_word.data);
+                    }
                 }
-                else {
-                    query.plus_words.insert(query_word.data);
-                }
-            }
-            }
-            catch (const invalid_argument& e) {
-                throw invalid_argument(e);
-            }
         }
         return query;
     }
@@ -225,20 +212,14 @@ public:
     template <typename StringContainer>
     explicit SearchServer(const StringContainer& stop_words) {
         for (const auto& stop_word : stop_words) {
-            try
-            {
-                IsValidWord(stop_word);
-                stop_words_.insert(stop_word);
-
+            if (!IsValidWord(stop_word)) {
+                throw invalid_argument("There are invalid characters among stop-woeds."s);
             }
-            catch (const invalid_argument& e) {
-                throw invalid_argument (e.what()+ "among stop-words."s);
-            }
+            stop_words_.insert(stop_word);
         }
     }
-
     explicit SearchServer(const string& stop_words_text)
-        : SearchServer(SplitIntoWords(stop_words_text))  // Invoke delegating constructor from string container
+        : SearchServer(SplitIntoWords(stop_words_text))
     {
     }
 
@@ -246,23 +227,20 @@ public:
         if ((document_id < 0) || (documents_.count(document_id) > 0)) {
             throw invalid_argument("Incorrect document id."s);
         }
-        try {
-            vector<string> words = SplitIntoWordsNoStop(document);
-            const double inv_word_count = 1.0 / words.size();
-            for (const string& word : words) {
-                word_to_document_freqs_[word][document_id] += inv_word_count;
-            }
+
+        vector<string> words = SplitIntoWordsNoStop(document);
+        const double inv_word_count = 1.0 / words.size();
+        for (const string& word : words) {
+            word_to_document_freqs_[word][document_id] += inv_word_count;
         }
-        catch (const invalid_argument& e) {
-            throw invalid_argument(e.what()+"in the document."s);
-        }
+
         documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
         document_ids_.push_back(document_id);
     }
 
     template <typename PredicateFunction>
     vector<Document> FindTopDocuments(const string& raw_query, PredicateFunction predicate) const {
-        try {
+        
             const Query query = ParseQuery(raw_query);
             auto matched_documents = FindAllDocuments(query, predicate);
             sort(matched_documents.begin(), matched_documents.end(),
@@ -278,11 +256,7 @@ public:
                 matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
             }
             return matched_documents;
-        }
-        catch (const invalid_argument& e) {
-            throw invalid_argument(e);
-        }
-       
+
     }
 
     vector<Document> FindTopDocuments(const string& raw_query, DocumentStatus desired_status = DocumentStatus::ACTUAL) const {
@@ -290,7 +264,7 @@ public:
     }
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const string& raw_query, int document_id) const {
-        try {
+       
             const Query query = ParseQuery(raw_query);
             vector<string> matched_words;
             for (const string& word : query.plus_words) {
@@ -311,10 +285,7 @@ public:
                 }
             }
             return { matched_words, documents_.at(document_id).status };
-        }
-        catch (const invalid_argument& e) {
-            throw invalid_argument(e);
-        }
+        
     }
 
     int GetDocumentCount() const {
