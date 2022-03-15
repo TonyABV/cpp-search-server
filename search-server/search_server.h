@@ -17,6 +17,8 @@
 #include <string_view>
 #include <vector>
 
+const double error = 1e-6;
+
 class SearchServer {
 public:
     template <typename StringContainer>
@@ -108,7 +110,7 @@ private:
     std::vector<Document> FindAllDocuments(const Query& query, DocumentPredicate document_predicate) const;
 
     template <typename DocumentPredicate, class ExecutionPolicy>
-    std::vector<Document> FindAllDocuments(ExecutionPolicy&& policy, const vec_Query& query, DocumentPredicate document_predicate) const;/**/
+    std::vector<Document> FindAllDocuments(ExecutionPolicy&& policy, const vec_Query& query, DocumentPredicate document_predicate) const;
 };
 
 template <typename StringContainer>
@@ -130,7 +132,7 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string_view& raw
     const auto query = ParseQuery(raw_query);
     auto matched_documents = FindAllDocuments(query, document_predicate);
     sort(matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-        if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
+        if (std::abs(lhs.relevance - rhs.relevance) < error) {
             return lhs.rating > rhs.rating;
         }
         else {
@@ -143,12 +145,18 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string_view& raw
     return matched_documents;
 }
 
+// Не понял как использовать перегрузку. Написал contexpr ф-ю
+template<class ExecutionPolicy>
+constexpr bool IsPar(ExecutionPolicy&& policy) {
+    return std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::parallel_policy>;
+}
+
 template <typename DocumentPredicate, class ExecutionPolicy>
 std::vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy&& policy, const std::string_view& raw_query, DocumentPredicate document_predicate) const {
 
     vec_Query query = ParseQuery(policy, raw_query);
 
-    if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::parallel_policy>) {
+    if (IsPar(policy)) {
         std::sort(query.minus_words.begin(), query.minus_words.end());
         query.minus_words.erase(std::unique(query.minus_words.begin(), query.minus_words.end()), query.minus_words.end());
 
@@ -160,7 +168,7 @@ std::vector<Document> SearchServer::FindTopDocuments(ExecutionPolicy&& policy, c
     auto matched_documents = FindAllDocuments(policy, query, document_predicate);
 
     sort(policy, matched_documents.begin(), matched_documents.end(), [](const Document& lhs, const Document& rhs) {
-        if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
+        if (std::abs(lhs.relevance - rhs.relevance) < error) {
             return lhs.rating > rhs.rating;
         }
         else {
@@ -273,7 +281,7 @@ std::tuple<std::vector<std::string_view>, DocumentStatus> SearchServer::MatchDoc
                 return word_to_document_freqs_.at(word).count(document_id);
             });
 
-    if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::parallel_policy>) {
+    if (IsPar(policy)) {
         sort(policy, matched_words.begin(), matched_words.end());
         auto last = unique(matched_words.begin(), matched_words.end());
         return { {matched_words.begin(), last}, documents_.at(document_id).status };
@@ -321,7 +329,7 @@ SearchServer::vec_Query SearchServer::ParseQuery(ExecutionPolicy&& policy, const
             }
         }
     }
-    if constexpr (std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::sequenced_policy>) {
+    if (!IsPar(policy)) {
         sort(result.minus_words.begin(), result.minus_words.end());
         result.minus_words.erase(
             std::unique(result.minus_words.begin(), result.minus_words.end()), result.minus_words.end());
