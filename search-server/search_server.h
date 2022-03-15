@@ -113,6 +113,12 @@ private:
     std::vector<Document> FindAllDocuments(ExecutionPolicy&& policy, const vec_Query& query, DocumentPredicate document_predicate) const;
 };
 
+// РќРµ РїРѕРЅСЏР» РєР°Рє РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РїРµСЂРµРіСЂСѓР·РєСѓ. РќР°РїРёСЃР°Р» contexpr С„-СЋ
+template<class ExecutionPolicy>
+constexpr bool IsPar(ExecutionPolicy&& policy) {
+    return std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::parallel_policy>;
+}
+
 template <typename StringContainer>
 SearchServer::SearchServer(const StringContainer& stop_words)
     : stop_words_(MakeUniqueNonEmptyStrings(stop_words))
@@ -143,12 +149,6 @@ std::vector<Document> SearchServer::FindTopDocuments(const std::string_view& raw
         matched_documents.resize(MAX_RESULT_DOCUMENT_COUNT);
     }
     return matched_documents;
-}
-
-// Не понял как использовать перегрузку. Написал contexpr ф-ю
-template<class ExecutionPolicy>
-constexpr bool IsPar(ExecutionPolicy&& policy) {
-    return std::is_same_v<std::decay_t<ExecutionPolicy>, std::execution::parallel_policy>;
 }
 
 template <typename DocumentPredicate, class ExecutionPolicy>
