@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma once
-
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -17,7 +15,7 @@ public:
     // с помощью using для удобства
     using Clock = std::chrono::steady_clock;
 
-    explicit LogDuration(const std::string& stage):stage_(stage);
+    explicit LogDuration(const std::string& stage);
 
     ~LogDuration();
 

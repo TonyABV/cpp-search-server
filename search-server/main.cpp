@@ -1,21 +1,18 @@
-#include "process_queries.h"
-#include "search_server.h"
-
 #include <execution>
 #include <iostream>
+#include <random>
 #include <string>
 #include <vector>
 
+#include "log_duration.h"
+#include "process_queries.h"
+#include "search_server.h"
+#include "test_example_functions.h"
+
 using namespace std;
 
-//void PrintDocument(const Document& document) {
-//    cout << "{ "s
-//        << "document_id = "s << document.id << ", "s
-//        << "relevance = "s << document.relevance << ", "s
-//        << "rating = "s << document.rating << " }"s << endl;
-//}
-
-ostream& operator<<(ostream& os, const DocumentStatus& ds) {
+ostream& operator<<(ostream& os, const DocumentStatus& ds)
+{
     switch (ds) {
     case DocumentStatus::ACTUAL: os << "ACTUAL"s; break;
     case DocumentStatus::IRRELEVANT: os << "IRRELEVANT"s; break;
@@ -25,12 +22,9 @@ ostream& operator<<(ostream& os, const DocumentStatus& ds) {
     return os;
 }
 
-
-
-
 template <typename A, typename F>
-void RunTestImpl(const A& func, const F& function_name) {
-
+void RunTestImpl(const A& func, const F& function_name)
+{
     func();
     cerr << function_name << " "s << "OK"s << endl;
 }
@@ -40,7 +34,8 @@ void RunTestImpl(const A& func, const F& function_name) {
 
 template <typename T, typename U>
 void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& u_str, const string& file,
-    const string& func, unsigned line, const string& hint) {
+    const string& func, unsigned line, const string& hint)
+{
     if (t != u) {
         cerr << boolalpha;
         cerr << file << "("s << line << "): "s << func << ": "s;
@@ -57,7 +52,8 @@ void AssertEqualImpl(const T& t, const U& u, const string& t_str, const string& 
 #define ASSERT_EQUAL_HINT(a, b, hint) AssertEqualImpl((a), (b), #a, #b, __FILE__, __FUNCTION__, __LINE__, (hint))
 
 //Проверка истины
-void AssertImpl(bool value, const string& expr_str, const string& file, const string& func, unsigned line, const string& hint) {
+void AssertImpl(bool value, const string& expr_str, const string& file, const string& func, unsigned line, const string& hint)
+{
     if (!value) {
         cerr << file << "("s << line << "): "s << func << ": "s;
         cerr << "ASSERT("s << expr_str << ") failed."s;
@@ -74,7 +70,8 @@ void AssertImpl(bool value, const string& expr_str, const string& file, const st
 
 
 // Тест проверяет, что поисковая система исключает стоп-слова при добавлении документов
-void TestExcludeStopWordsFromAddedDocumentContent() {
+void TestExcludeStopWordsFromAddedDocumentContent()
+{
     const int doc_id = 42;
     const string content = "cat in the city"s;
     const vector<int> ratings = { 1, 2, 3 };
@@ -95,7 +92,8 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
 }
 
 // Тест проверяет соответствие документов поисковому запросу.
-void TestSearchServerMatched() {
+void TestSearchServerMatched()
+{
     const int doc_id = 0;
     const string content = "white cat and  funny collar"s;
     const vector<int> ratings = { 8, -3 };
@@ -123,13 +121,13 @@ void TestSearchServerMatched() {
         const auto [words, status] = server.MatchDocument("flurry -cat"s, doc_id);
         ASSERT_EQUAL(words.size(), 0); //Проверка, что ответ пустой
     }
-
 }
 
 // Проверка сортировки по релевантности
-void TestSearchServerRelevanse() {
+void TestSearchServerRelevanse()
+{
     SearchServer server("and in on"s);
-    //    server.SetStopWords("and in on"s);
+    // server.SetStopWords("and in on"s);
     server.AddDocument(0, "white cat and funny collar"s, DocumentStatus::ACTUAL, { 8, -3 });
     server.AddDocument(1, "flurry cat flurry tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
     server.AddDocument(2, "lucky dog good eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
@@ -150,7 +148,8 @@ void TestSearchServerRelevanse() {
 }
 
 // Проверка правильности подсчета рейтинга
-void TestSearchServerRating() {
+void TestSearchServerRating()
+{
     //Создали вектор с рейтингами
     vector<vector<int>> ratings = { {8, -3}, {7, 2, 7}, {5, -12, 2, 1}, {9} };
     //Посчитали рейтинги и положили в вектор
@@ -176,9 +175,10 @@ void TestSearchServerRating() {
 }
 
 //Проверка поиска по статусу документа
-void TestSearchServerStatus() {
+void TestSearchServerStatus()
+{
     SearchServer server("and in on"s);
-    //    server.SetStopWords("and in on"s);
+    // server.SetStopWords("and in on"s);
     server.AddDocument(0, "white cat and  funny collar"s, DocumentStatus::ACTUAL, { 8, -3 });
     server.AddDocument(1, "flurry cat flurry tail"s, DocumentStatus::IRRELEVANT, { 7, 2, 7 });
     server.AddDocument(2, "lucky dog good eyes"s, DocumentStatus::BANNED, { 5, -12, 2, 1 });
@@ -210,9 +210,10 @@ void TestSearchServerStatus() {
     }
 }
 
-void TestSearchServerPredictate() {
+void TestSearchServerPredictate()
+{
     SearchServer server("and in on"s);
-    //    server.SetStopWords("and in on"s);
+    // server.SetStopWords("and in on"s);
     server.AddDocument(0, "white cat and  funny collar"s, DocumentStatus::ACTUAL, { 8, -3 });
     server.AddDocument(1, "flurry cat flurry tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
     server.AddDocument(2, "lucky dog good eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
@@ -237,7 +238,7 @@ void TestSearchServerPredictate() {
 
 void TestSearchServerMinus() {
     SearchServer server("and in on"s);
-    //    server.SetStopWords("and in on"s);
+    // server.SetStopWords("and in on"s);
     server.AddDocument(0, "white cat and  funny collar"s, DocumentStatus::ACTUAL, { 8, -3 });
     server.AddDocument(1, "flurry cat flurry tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
     server.AddDocument(2, "lucky dog good eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
@@ -258,61 +259,7 @@ void TestSearchServerMinus() {
             }
         }
     }
-
 }
-
-void TestSearchServerCalcRelevance() {
-    SearchServer server("and in on"s);
-    //    server.SetStopWords("and in on"s);
-    server.AddDocument(0, "white cat and  funny collar"s, DocumentStatus::ACTUAL, { 8, -3 });
-    server.AddDocument(1, "flurry cat flurry tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
-    server.AddDocument(2, "lucky dog good eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2, 1 });
-    server.AddDocument(3, "lucky starling Eugene"s, DocumentStatus::BANNED, { 9 });
-    //Подготовка для ручного вычисления TF-IDF
-    //Разбиваем документы на отдельные слова убирая стоп слова
-    //Расчет ведется до отбрасывания слов по статусу
-    map<int, vector<string>> doc_for_tf_idf = { {0, {"white"s,"cat"s, "funny"s, "collar"s }},
-                                               {1, {"flurry"s,"cat"s, "flurry"s, "tail"s }},
-                                               {2, {"lucky"s,"dog"s, "good"s, "eyes"s }},
-                                               {3, {"lucky"s,"starling"s, "Eugene"s }} };
-    //Разбиваем запрос на отдельные слова
-    map<int, string> query = { {0, "flurry"s}, {1, "lucky"s}, {2, "cat"s} };
-    map<int, double> query_idf; // ключ id слова из запроса
-    map<int, map<int, double>> doc_tf;
-    //Проверяем встречается ли слово в документе или нет, не важно сколько раз.
-    //Далее считаем IDF для каждого слова по формуле idf=log(количество документов / количество совпадений)
-    //Например слово "flurry" встречается в одном документе, значит его idf=log(4/1)
-    for (int i = 0; i < query.size(); ++i) {
-        int freq_query_count = 0; //Обнуляется при переходе к следующему слову
-        doc_tf[i];
-        for (int j = 0; j < doc_for_tf_idf.size(); ++j) {
-            //Проверяем есть ли слово в документе, не важно сколько раз
-            if (count(doc_for_tf_idf.at(j).begin(), doc_for_tf_idf.at(j).end(), query.at(i))) {
-                ++freq_query_count;
-            }
-            //Вычисляем tf, ключ номер слова. В контейнере значений, ключ номер документа
-            doc_tf.at(i)[j] = count(doc_for_tf_idf.at(j).begin(), doc_for_tf_idf.at(j).end(), query.at(i)) * 1.0 / doc_for_tf_idf.size();
-        }
-        //Вычисляем idf, ключ номер слова
-        query_idf[i] = log(doc_for_tf_idf.size() / freq_query_count);
-    }
-    //Перемножаем tf и idf и складываем по документам, ключ номер документа
-    map<int, double> tf_idf;
-    for (int j = 0; j < doc_for_tf_idf.size(); ++j) {
-        for (int i = 0; i < query_idf.size(); ++i) {
-            tf_idf[j] += doc_tf.at(i).at(j) * query_idf.at(i);
-        }
-    }
-
-    const auto& documents = server.FindTopDocuments("flurry lucky cat"s);
-    for (const Document& document : documents) {
-        double diff = abs(document.relevance - tf_idf.at(document.id));
-        cout << document.id << " : "s << diff << endl;
-        ASSERT(abs(document.relevance - tf_idf.at(document.id)) < 1e-6);
-    }
-}
-
-
 
 // Функция TestSearchServer является точкой входа для запуска тестов
 void TestSearchServer() {
@@ -323,41 +270,81 @@ void TestSearchServer() {
     RUN_TEST(TestSearchServerStatus);
     RUN_TEST(TestSearchServerPredictate);
     RUN_TEST(TestSearchServerMinus);
-    //RUN_TEST(TestSearchServerCalcRelevance);
-
 }
+
+string GenerateWord(mt19937& generator, int max_length) {
+    const int length = uniform_int_distribution(1, max_length)(generator);
+    string word;
+    word.reserve(length);
+    for (int i = 0; i < length; ++i) {
+        // 97 = 'a', 122 = 'z'
+        word.push_back(uniform_int_distribution(97, 122)(generator));
+    }
+    return word;
+}
+
+vector<string> GenerateDictionary(mt19937& generator, int word_count, int max_length) {
+    vector<string> words;
+    words.reserve(word_count);
+    for (int i = 0; i < word_count; ++i) {
+        words.push_back(GenerateWord(generator, max_length));
+    }
+    words.erase(unique(words.begin(), words.end()), words.end());
+    return words;
+}
+
+string GenerateQuery(mt19937& generator, const vector<string>& dictionary, int word_count, double minus_prob = 0) {
+    string query;
+    for (int i = 0; i < word_count; ++i) {
+        if (!query.empty()) {
+            query.push_back(' ');
+        }
+        if (uniform_real_distribution<>(0, 1)(generator) < minus_prob) {
+            query.push_back('-');
+        }
+        query += dictionary[uniform_int_distribution<int>(0, dictionary.size() - 1)(generator)];
+    }
+    return query;
+}
+
+vector<string> GenerateQueries(mt19937& generator, const vector<string>& dictionary, int query_count, int max_word_count) {
+    vector<string> queries;
+    queries.reserve(query_count);
+    for (int i = 0; i < query_count; ++i) {
+        queries.push_back(GenerateQuery(generator, dictionary, max_word_count));
+    }
+    return queries;
+}
+
+template <typename ExecutionPolicy>
+void Test(string_view mark, const SearchServer& search_server, const vector<string>& queries, ExecutionPolicy&& policy) {
+    LOG_DURATION(string(mark));
+    double total_relevance = 0;
+    for (const string_view query : queries) {
+        for (const auto& document : search_server.FindTopDocuments(policy, query)) {
+            total_relevance += document.relevance;
+        }
+    }
+    cout << total_relevance << endl;
+}
+
+#define TEST(policy) Test(#policy, search_server, queries, execution::policy)
 
 int main() {
     TestSearchServer();
-    SearchServer search_server("and with"s);
-    int id = 0;
-    for (
-        const string& text : {
-            "white cat and yellow hat"s,
-            "curly cat curly tail"s,
-            "nasty dog with big eyes"s,
-            "nasty pigeon john"s,
-        }
-        ) {
-        search_server.AddDocument(++id, text, DocumentStatus::ACTUAL, { 1, 2 });
+
+    mt19937 generator;
+
+    const auto dictionary = GenerateDictionary(generator, 1000, 10);
+    const auto documents = GenerateQueries(generator, dictionary, 10'000, 70);
+
+    SearchServer search_server(dictionary[0]);
+    for (size_t i = 0; i < documents.size(); ++i) {
+        search_server.AddDocument(i, documents[i], DocumentStatus::ACTUAL, { 1, 2, 3 });
     }
 
-    cout << "ACTUAL by default:"s << endl;
-    // последовательная версия
-    for (const Document& document : search_server.FindTopDocuments("curly nasty cat"s)) {
-        PrintDocument(document);
-    }
-    cout << "BANNED:"s << endl;
-    // последовательная версия
-    for (const Document& document : search_server.FindTopDocuments(execution::seq, "curly nasty cat"s, DocumentStatus::BANNED)) {
-        PrintDocument(document);
-    }
+    const auto queries = GenerateQueries(generator, dictionary, 100, 70);
 
-    cout << "Even ids:"s << endl;
-    // параллельная версия
-    for (const Document& document : search_server.FindTopDocuments(execution::par, "curly nasty cat"s, [](int document_id, DocumentStatus status, int rating) { return document_id % 2 == 0; })) {
-        PrintDocument(document);
-    }
-
-    return 0;
+    TEST(seq);
+    TEST(par);
 }
