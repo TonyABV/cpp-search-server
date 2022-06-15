@@ -249,17 +249,6 @@ void TestSearchServerMinus() {
     }
 }
 
-// Функция TestSearchServer является точкой входа для запуска тестов
-void TestSearchServer() {
-    RUN_TEST(TestExcludeStopWordsFromAddedDocumentContent);
-    RUN_TEST(TestSearchServerMatched);
-    RUN_TEST(TestSearchServerRelevanse);
-    RUN_TEST(TestSearchServerRating);
-    RUN_TEST(TestSearchServerStatus);
-    RUN_TEST(TestSearchServerPredictate);
-    RUN_TEST(TestSearchServerMinus);
-}
-
 std::string GenerateWord(std::mt19937& generator, int max_length) {
     const int length = std::uniform_int_distribution(1, max_length)(generator);
     std::string word;
@@ -316,4 +305,4 @@ void Test(std::string_view mark, const SearchServer& search_server, const std::v
     std::cout << total_relevance << std::endl;
 }
 
-#define TEST(policy) Test(#policy, search_server, queries, execution::policy)
+#define TEST(policy) Test(#policy, search_server, queries, std::execution::policy)
